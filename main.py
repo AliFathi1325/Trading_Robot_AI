@@ -244,6 +244,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         teda_id = save_buy(candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_buy.predict(X)
+                        result_Ai = [np.argmax(result_Ai), result_Ai[0][0], result_Ai[0][1]]
                         comment = f"Buy-{str(teda_id)}"
                         ticket_in = trade.open_position("BUY", risk_reward, comment)
                         if ticket_in:
@@ -256,6 +257,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         teda_id = save_sell(abs(candle), power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_sell.predict(X)
+                        result_Ai = [np.argmax(result_Ai), result_Ai[0][0], result_Ai[0][1]]
                         comment = f"Sell-{str(teda_id)}"
                         ticket_in = trade.open_position("SELL", risk_reward, comment)
                         if ticket_in:
