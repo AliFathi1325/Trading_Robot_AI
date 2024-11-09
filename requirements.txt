@@ -1,0 +1,7 @@
+MetaTrader5
+pytz
+python-telegram-bot
+python-dotenv
+tensorflow
+numpy
+flask
