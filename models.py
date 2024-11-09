@@ -86,7 +86,7 @@ def save_sell(Candle, Power, price, MovingAverage5, MovingAverage15, MovingAvera
     conn.close()
     return transaction_id
 
-def update_ticket(transaction_id, comment, ticket_in):
+def update_ticket_buy(transaction_id, comment, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
@@ -94,6 +94,12 @@ def update_ticket(transaction_id, comment, ticket_in):
         SET ticket_in = ?, comment = ?
         WHERE id = ? 
     ''', (ticket_in, comment, transaction_id))
+    conn.commit()
+    conn.close()
+
+def update_ticket_sell(transaction_id, comment, ticket_in):
+    conn = sqlite3.connect('swing.db')
+    cursor = conn.cursor()
     cursor.execute(''' 
         UPDATE sell 
         SET ticket_in = ?, comment = ?
@@ -102,7 +108,7 @@ def update_ticket(transaction_id, comment, ticket_in):
     conn.commit()
     conn.close()
 
-def update_result(result, ticket_in):
+def update_result_buy(result, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
@@ -110,6 +116,12 @@ def update_result(result, ticket_in):
         SET result = ?
         WHERE ticket_in = ? 
     ''', (result, ticket_in))
+    conn.commit()
+    conn.close()
+
+def update_result_sell(result, ticket_in):
+    conn = sqlite3.connect('swing.db')
+    cursor = conn.cursor()
     cursor.execute(''' 
         UPDATE sell 
         SET result = ?
@@ -118,7 +130,7 @@ def update_result(result, ticket_in):
     conn.commit()
     conn.close()
 
-def update_ticket_out(ticket_out, ticket_in):
+def update_ticket_out_buy(ticket_out, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
@@ -126,6 +138,12 @@ def update_ticket_out(ticket_out, ticket_in):
         SET ticket_out = ?
         WHERE ticket_in = ? 
     ''', (ticket_out, ticket_in))
+    conn.commit()
+    conn.close()
+
+def update_ticket_out_sell(ticket_out, ticket_in):
+    conn = sqlite3.connect('swing.db')
+    cursor = conn.cursor()
     cursor.execute(''' 
         UPDATE sell 
         SET ticket_out = ?

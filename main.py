@@ -1,7 +1,7 @@
 import MetaTrader5 as mt5
 from datetime import datetime, timedelta
 import time
-from models import init_db, save_buy, save_sell, update_ticket, update_result, update_ticket_out
+from models import init_db, save_buy, save_sell, update_ticket_buy, update_ticket_sell, update_result_buy, update_result_sell, update_ticket_out_buy, update_ticket_out_sell
 import pytz
 import asyncio
 from telegram import Bot
@@ -19,6 +19,7 @@ class AutoTrading():
         if not mt5.login(ACCOUNT, PASSWORD, SERVER):
             print("Login failed")
             mt5.shutdown()
+        print("ok")
 
     def get_last_candle_open_time(self):
         rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 0, 1)
@@ -196,8 +197,10 @@ class AutoTrading():
                             if deal_out.order == ticket_out:
                                 profit = deal_out.profit
                                 profit = 1 if profit > 0 else 0
-                                update_result(profit, ticket_in)
-                                update_ticket_out(ticket_out, ticket_in)
+                                update_result_buy(profit, ticket_in)
+                                update_ticket_out_buy(ticket_out, ticket_in)
+                                update_result_sell(profit, ticket_in)
+                                update_ticket_out_sell(ticket_out, ticket_in)  
                                 ticket_in = None
                                 ticket_out = None
                                 profit = None
@@ -213,16 +216,17 @@ async def send_telegram(text):
     bot = Bot(token=os.getenv("BOT_TOKEN"))
     await bot.send_message(chat_id=os.getenv("CHANEL"), text=text)  
  
-def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
+async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     trade = AutoTrading(ACCOUNT, PASSWORD, SERVER, symbol, risk)
     init_db()
-    asyncio.run(send_telegram('Connecting to MetaTrader5'))
+    await send_telegram('Connecting to MetaTrader5')
     last_candle_open_time = trade.get_last_candle_open_time()
-    start_time = datetime.strptime("12:30", "%H:%M").time()
-    end_time = datetime.strptime("23:30", "%H:%M").time()
+    start_time = datetime.strptime("01:00", "%H:%M").time()
+    end_time = datetime.strptime("04:00", "%H:%M").time()
+
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
-            time.sleep(1)
+            await asyncio.sleep(1)
             current_open_time = trade.get_last_candle_open_time()
             candle = trade.get_candle()
             power = trade.get_candle_power()
@@ -231,19 +235,27 @@ def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
             moving60 = trade.get_moving_average(60)
             int_moving = trade.int_moving(moving5, moving15, moving60)
             if current_open_time != last_candle_open_time:
-                if candle != None:
+                if candle is not None:
                     if candle > 0 and moving15 > 0:
                         teda_id = save_buy(candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         comment = f"Buy-{str(teda_id)}"
                         ticket_in = trade.open_position("BUY", risk_reward, comment)
-                        update_ticket(teda_id, comment, ticket_in)
-                        asyncio.run(send_telegram(f"{comment} order is opened"))
+                        if ticket_in:
+                            update_ticket_buy(teda_id, "opened", ticket_in)
+                            await send_telegram(f"{comment} order is opened")
+                        else:
+                            update_ticket_buy(teda_id, "not opened", ticket_in)
+                            await send_telegram(f"{comment} order not opened")
                     elif candle < 0 and moving15 < 0:
                         teda_id = save_sell(abs(candle), power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         comment = f"Sell-{str(teda_id)}"
                         ticket_in = trade.open_position("SELL", risk_reward, comment)
-                        update_ticket(teda_id, comment, ticket_in)
-                        asyncio.run(send_telegram(f"{comment} order is opened"))
+                        if ticket_in:
+                            update_ticket_sell(teda_id, "opened", ticket_in)
+                            await send_telegram(f"{comment} order is opened")
+                        else:
+                            update_ticket_sell(teda_id, "not opened", ticket_in)
+                            await send_telegram(f"{comment} order not opened")
                     else:
                         trade.update_tiket_result()
                 last_candle_open_time = current_open_time
@@ -252,4 +264,4 @@ def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
             trade.update_tiket_result()
 
 if __name__ == "__main__":
-    run_bot()
+    asyncio.run(run_bot(501066048, "-t1qRzHj", "RoboForex-Pro", 'XAUUSD', 25.0, 1.0, 1))
