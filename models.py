@@ -15,7 +15,9 @@ def init_db():
             ticket_in INTEGER NULL,
             ticket_out INTEGER NULL,
             comment TEXT NULL,
-            result INTEGER NULL
+            result INTEGER NULL,
+            Day INTEGER NULL,
+            AI INTEGER NULL
         )
     ''')
     cursor.execute('''
@@ -30,7 +32,9 @@ def init_db():
             ticket_in INTEGER NULL,
             ticket_out INTEGER NULL,
             comment TEXT NULL,
-            result INTEGER NULL
+            result INTEGER NULL,
+            Day INTEGER NULL,
+            AI INTEGER NULL
         )
     ''')
     cursor.execute('''
@@ -86,25 +90,25 @@ def save_sell(Candle, Power, price, MovingAverage5, MovingAverage15, MovingAvera
     conn.close()
     return transaction_id
 
-def update_ticket_buy(transaction_id, comment, ticket_in):
+def update_ticket_buy(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
         UPDATE buy 
-        SET ticket_in = ?, comment = ?
+        SET ticket_in = ?, comment = ?, Ai = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, transaction_id))
+    ''', (ticket_in, comment, transaction_id, result_AI))
     conn.commit()
     conn.close()
 
-def update_ticket_sell(transaction_id, comment, ticket_in):
+def update_ticket_sell(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
         UPDATE sell 
-        SET ticket_in = ?, comment = ?
+        SET ticket_in = ?, comment = ?, AI = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, transaction_id))
+    ''', (ticket_in, comment, transaction_id, result_AI))
     conn.commit()
     conn.close()
 
