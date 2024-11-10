@@ -160,7 +160,7 @@ def update_ticket_out_sell(ticket_out, ticket_in):
 def get_data_from_db(table_name):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
-    cursor.execute(f"SELECT id, Candle, Power, Price, MovingAverage5, MovingAverage15, MovingAverage60, Result FROM {table_name}")
+    cursor.execute(f"SELECT id, Candle, Power, Price, MovingAverage5, MovingAverage15, MovingAverage60, Result AI, Result FROM {table_name}")
     data = cursor.fetchall()
     conn.close()
     return data
