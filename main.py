@@ -227,7 +227,6 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     last_candle_open_time = trade.get_last_candle_open_time()
     start_time = datetime.strptime("01:00", "%H:%M").time()
     end_time = datetime.strptime("04:00", "%H:%M").time()
-
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
             await asyncio.sleep(1)
@@ -244,27 +243,27 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         teda_id = save_buy(candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_buy.predict(X)
-                        result_Ai = [np.argmax(result_Ai), result_Ai[0][0], result_Ai[0][1]]
+                        result_Ai = np.argmax(result_Ai)
                         comment = f"Buy-{str(teda_id)}"
                         ticket_in = trade.open_position("BUY", risk_reward, comment)
                         if ticket_in:
-                            update_ticket_buy(teda_id, "opened", ticket_in, result_Ai)
+                            update_ticket_buy(teda_id, "opened", ticket_in, result_Ai, 2)
                             await send_telegram(f"{comment} order is opened")
                         else:
-                            update_ticket_buy(teda_id, "not opened", ticket_in, result_Ai)
+                            update_ticket_buy(teda_id, "not opened", ticket_in, result_Ai, 2)
                             await send_telegram(f"{comment} order not opened")
                     elif candle < 0 and moving15 < 0:
                         teda_id = save_sell(abs(candle), power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_sell.predict(X)
-                        result_Ai = [np.argmax(result_Ai), result_Ai[0][0], result_Ai[0][1]]
+                        result_Ai =np.argmax(result_Ai)
                         comment = f"Sell-{str(teda_id)}"
                         ticket_in = trade.open_position("SELL", risk_reward, comment)
                         if ticket_in:
-                            update_ticket_sell(teda_id, "opened", ticket_in, result_Ai)
+                            update_ticket_sell(teda_id, "opened", ticket_in, result_Ai, 2)
                             await send_telegram(f"{comment} order is opened")
                         else:
-                            update_ticket_sell(teda_id, "not opened", ticket_in, result_Ai)
+                            update_ticket_sell(teda_id, "not opened", ticket_in, result_Ai, 2)
                             await send_telegram(f"{comment} order not opened")
                     else:
                         trade.update_tiket_result()
@@ -274,4 +273,4 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
             trade.update_tiket_result()
 
 if __name__ == "__main__":
-    asyncio.run(run_bot(501066048, "-t1qRzHj", "RoboForex-Pro", 'XAUUSD', 25.0, 1.0, 1))
+    asyncio.run(run_bot(501066048, "-t1qRzHj", "RoboForex-Pro", 'XAUUSD', 2.0, 1.0, 1))
