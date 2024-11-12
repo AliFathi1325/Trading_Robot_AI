@@ -133,7 +133,32 @@ class AutoTrading():
         power = candle_1[0][4] - candle_2[0][2] if trend > 0 else candle_2[0][3] - candle_1[0][4] 
         power_candle = 0 if power < 0 else 1
         return power_candle
-
+    
+    def get_candle_shadow(self):
+        candel = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
+        open_candel = candel[0][1]
+        high_candel = candel[0][2]
+        low_candel = candel[0][3]
+        close_candel = candel[0][4]
+        trend = close_candel - open_candel
+        all_candle = high_candel - low_candel
+        if trend > 0 :
+            up_shadow = high_candel - close_candel
+            down_shadow = open_candel - low_candel
+            up_shadow = up_shadow / all_candle * 100
+            down_shadow = down_shadow / all_candle * 100
+            return int(str(up_shadow)[0]), int(str(down_shadow)[0])
+        elif trend < 0 :
+            up_shadow = high_candel - open_candel
+            down_shadow = close_candel - low_candel
+            up_shadow = up_shadow / all_candle * 100
+            down_shadow = down_shadow / all_candle * 100
+            return int(str(up_shadow)[0]), int(str(down_shadow)[0])
+        else:
+            up_shadow = 0
+            down_shadow = 0
+            return up_shadow, down_shadow
+        
     def get_moving_average(self, period=int):
         rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, period)
         if rates is None or len(rates) < period:
@@ -234,6 +259,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
             current_open_time = trade.get_last_candle_open_time()
             candle = trade.get_candle()
             power = trade.get_candle_power()
+            up_shadow, down_shadow = trade.get_candle_shadow()
             moving5 = trade.get_moving_average(5)
             moving15 = trade.get_moving_average(15)
             moving60 = trade.get_moving_average(60)
