@@ -145,15 +145,15 @@ class AutoTrading():
         if trend > 0 :
             up_shadow = high_candel - close_candel
             down_shadow = open_candel - low_candel
-            up_shadow = up_shadow / all_candle * 100
-            down_shadow = down_shadow / all_candle * 100
-            return int(str(up_shadow)[0]), int(str(down_shadow)[0])
+            up_shadow = up_shadow / all_candle
+            down_shadow = down_shadow / all_candle
+            return int(str(up_shadow)[2]), int(str(down_shadow)[2])
         elif trend < 0 :
             up_shadow = high_candel - open_candel
             down_shadow = close_candel - low_candel
-            up_shadow = up_shadow / all_candle * 100
-            down_shadow = down_shadow / all_candle * 100
-            return int(str(up_shadow)[0]), int(str(down_shadow)[0])
+            up_shadow = up_shadow / all_candle 
+            down_shadow = down_shadow / all_candle 
+            return int(str(up_shadow)[2]), int(str(down_shadow)[2])
         else:
             up_shadow = 0
             down_shadow = 0
