@@ -140,7 +140,7 @@ class AutoTrading():
         high_candel = candel[0][2]
         low_candel = candel[0][3]
         close_candel = candel[0][4]
-        trend = close_candel - open_candel
+        trend = open_candel - close_candel
         all_candle = high_candel - low_candel
         if trend > 0 :
             up_shadow = high_candel - close_candel
@@ -262,7 +262,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     last_candle_open_time = trade.get_last_candle_open_time()
     start_time = datetime.strptime("00:00", "%H:%M").time()
     end_time = datetime.strptime("23:59", "%H:%M").time()
-    day = 2
+    day = 5
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
             await asyncio.sleep(1)
@@ -281,14 +281,14 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_buy.predict(X)
                         result_Ai = int(np.argmax(result_Ai))
-                        # comment = f"Buy-{str(trade_id)}"
-                        # ticket_in = trade.open_position("BUY", risk_reward, comment, 1)
-                        # if ticket_in:
-                        #     update_ticket_buy(trade_id, "opened", ticket_in, result_Ai, day)
-                        #     await send_telegram(f"{comment} order is opened")
-                        # else:
-                        #     update_ticket_buy(trade_id, "not opened", ticket_in, result_Ai, day)
-                        #     await send_telegram(f"{comment} order not opened")
+                        comment = f"Buy-{str(trade_id)}"
+                        ticket_in = trade.open_position("BUY", risk_reward, comment, 1)
+                        if ticket_in:
+                            update_ticket_buy(trade_id, "opened", ticket_in, result_Ai, day)
+                            await send_telegram(f"{comment} order is opened")
+                        else:
+                            update_ticket_buy(trade_id, "not opened", ticket_in, result_Ai, day)
+                            await send_telegram(f"{comment} order not opened")
                         if result_Ai == 0:
                             trade_id = save_sell2(candle, power, up_shadow, down_shadow, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                             comment = f"Sell-{str(trade_id)} and Strategy-2"
@@ -303,14 +303,14 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
                         result_Ai = model_sell.predict(X)
                         result_Ai = int(np.argmax(result_Ai))
-                        # comment = f"Sell-{str(trade_id)}"
-                        # ticket_in = trade.open_position("SELL", risk_reward, comment, 1)
-                        # if ticket_in:
-                        #     update_ticket_sell(trade_id, "opened", ticket_in, result_Ai, day)
-                        #     await send_telegram(f"{comment} order is opened")
-                        # else:
-                        #     update_ticket_sell(trade_id, "not opened", ticket_in, result_Ai, day)
-                        #     await send_telegram(f"{comment} order not opened")
+                        comment = f"Sell-{str(trade_id)}"
+                        ticket_in = trade.open_position("SELL", risk_reward, comment, 1)
+                        if ticket_in:
+                            update_ticket_sell(trade_id, "opened", ticket_in, result_Ai, day)
+                            await send_telegram(f"{comment} order is opened")
+                        else:
+                            update_ticket_sell(trade_id, "not opened", ticket_in, result_Ai, day)
+                            await send_telegram(f"{comment} order not opened")
                         if result_Ai == 0:
                             trade_id = save_buy2(candle, power, up_shadow, down_shadow, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
                             comment = f"Buy-{str(trade_id)} and Strategy-2"
