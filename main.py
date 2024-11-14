@@ -141,18 +141,17 @@ class AutoTrading():
         low_candel = candel[0][3]
         close_candel = candel[0][4]
         trend = open_candel - close_candel
-        all_candle = high_candel - low_candel
-        if trend > 0 :
+        if trend < 0 :
             up_shadow = high_candel - close_candel
             down_shadow = open_candel - low_candel
-            up_shadow = up_shadow / all_candle
-            down_shadow = down_shadow / all_candle
+            up_shadow = up_shadow / (high_candel - low_candel) 
+            down_shadow = down_shadow / (high_candel - low_candel)  
             return int(str(up_shadow)[2]), int(str(down_shadow)[2])
-        elif trend < 0 :
+        elif trend > 0 :
             up_shadow = high_candel - open_candel
             down_shadow = close_candel - low_candel
-            up_shadow = up_shadow / all_candle 
-            down_shadow = down_shadow / all_candle 
+            up_shadow = up_shadow / (high_candel - low_candel)  
+            down_shadow = down_shadow / (high_candel - low_candel)  
             return int(str(up_shadow)[2]), int(str(down_shadow)[2])
         else:
             up_shadow = 0
@@ -184,11 +183,9 @@ class AutoTrading():
         if strategy == 1:
             sl = round(enter_candle[0][3]-(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][2]+(spread/3), 2)
             tp = round(((enter_price-sl)*risk_reward)+enter_price if order == mt5.ORDER_TYPE_BUY else enter_price-((sl-enter_price)*risk_reward), 2)
-            print('one', order_type,'Enter:', enter_price,'TP:', tp,'Sl:', sl)
         elif strategy == 2:
             tp = round(enter_candle[0][2]+(spread/3) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][3]-spread, 2)
             sl = round(enter_price-((tp-enter_price)*risk_reward) if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_price-tp)*risk_reward), 2)
-            print('two', order,'Enter:', enter_price,'TP:', tp,'Sl:', sl)
         volume = self.position_size(sl, enter_price)
         request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -260,8 +257,8 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     model_sell = tf.keras.models.load_model('sell.h5')
     await send_telegram('Connecting to MetaTrader5')
     last_candle_open_time = trade.get_last_candle_open_time()
-    start_time = datetime.strptime("00:00", "%H:%M").time()
-    end_time = datetime.strptime("23:59", "%H:%M").time()
+    start_time = datetime.strptime("01:00", "%H:%M").time()
+    end_time = datetime.strptime("04:00", "%H:%M").time()
     day = 5
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
