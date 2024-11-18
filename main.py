@@ -1,14 +1,16 @@
 import MetaTrader5 as mt5
-from datetime import datetime, timedelta
-import time
+from datetime import datetime, timedelta, date, timezone
 from models import *
 import pytz
 import asyncio
 from telegram import Bot
 from dotenv import load_dotenv
 import os
-import tensorflow as tf
+# import tensorflow as tf
 import numpy as np
+import pandas_ta as ta
+import pandas as pd
+
 
 
 class AutoTrading():
@@ -28,6 +30,226 @@ class AutoTrading():
         if rates is not None and len(rates) > 0:
             return datetime.fromtimestamp(rates[0][0])
         return None
+    
+    def get_day(self):
+        today = date.today()     # گرفتن تاریخ امروز
+        day_of_week = today.weekday()     # گرفتن روز هفته (0=دوشنبه, 6=یکشنبه)
+        return day_of_week
+
+    def get_hour(self):
+        utc_time = datetime.now(timezone.utc)   # گرفتن زمان فعلی به وقت UTC
+        hour = utc_time.hour    # استخراج ساعت
+        return hour 
+
+    def get_candle(self):
+        candle = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
+        if candle is None or len(candle) == 0:
+            return None
+        open_candle, close_candle = candle[0][1], candle[0][4]
+        trend = open_candle - close_candle
+        if trend == 0 :
+             return 0
+        if trend < 0 :
+            return 1
+        if trend > 0 :
+            return 2
+
+    def get_candle_power(self):
+        old_candles = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 2, 9)
+        list_all = []
+        for old_candle in old_candles:
+            open_candle = old_candle[1]
+            high_candle = old_candle[2]
+            low_candle = old_candle[3]
+            close_candle = old_candle[4]
+            volume_candle = old_candle[5]
+            trend = open_candle - close_candle
+            if trend > 0 :
+                up_shadow = high_candle - open_candle
+                down_shadow = close_candle - low_candle
+                up_shadow = up_shadow / (high_candle - low_candle) * 100
+                down_shadow = down_shadow / (high_candle - low_candle) * 100
+                candle_body = 100 -  up_shadow
+                score = candle_body * volume_candle * trend
+                list_all.append(score)
+            elif trend < 0 :
+                up_shadow = high_candle - close_candle
+                down_shadow = open_candle - low_candle
+                up_shadow = up_shadow / (high_candle - low_candle) * 100
+                down_shadow = down_shadow / (high_candle - low_candle) * 100
+                candle_body = 100 - down_shadow
+                score = candle_body * volume_candle * abs(trend)
+                list_all.append(score)
+        new_candle = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
+        open_candle = new_candle[0][1]
+        high_candle = new_candle[0][2]
+        low_candle = new_candle[0][3]
+        close_candle = new_candle[0][4]
+        volume_candle = new_candle[0][5]
+        trend = close_candle - open_candle
+        if trend > 0 :
+            up_shadow = high_candle - open_candle
+            down_shadow = close_candle - low_candle
+            up_shadow = up_shadow / (high_candle - low_candle) * 100
+            down_shadow = down_shadow / (high_candle - low_candle) * 100
+            candle_body = 100 - up_shadow
+            new_score = candle_body * volume_candle * trend
+            men_score = sum(list_all) / len(list_all)
+        elif trend < 0 :
+            up_shadow = high_candle - close_candle
+            down_shadow = open_candle - low_candle
+            up_shadow = up_shadow / (high_candle - low_candle) * 100
+            down_shadow = down_shadow / (high_candle - low_candle) * 100
+            candle_body = 100 - down_shadow
+            new_score = candle_body * volume_candle * abs(trend)
+            men_score = sum(list_all) / len(list_all)
+        score = round(new_score / men_score * 100)
+        return score
+
+    def get_candle_close(self):
+        candle_1 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
+        candle_2 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 2, 1)
+        trend = candle_1[0][4] - candle_1[0][1]
+        power = candle_1[0][4] - candle_2[0][2] if trend > 0 else candle_2[0][3] - candle_1[0][4] 
+        power_candle = 0 if power < 0 else 1
+        return power_candle
+    
+    def get_candle_shadow(self):
+        candel = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
+        open_candel = candel[0][1]
+        high_candel = candel[0][2]
+        low_candel = candel[0][3]
+        close_candel = candel[0][4]
+        trend = open_candel - close_candel
+        if trend < 0 :
+            up_shadow = high_candel - close_candel
+            down_shadow = open_candel - low_candel
+        elif trend >= 0 :
+            up_shadow = high_candel - open_candel
+            down_shadow = close_candel - low_candel
+        up_shadow = round(up_shadow / (high_candel - low_candel) * 100)
+        down_shadow = round(down_shadow / (high_candel - low_candel) * 100)
+        return up_shadow, down_shadow
+
+    def get_macd_state(self):
+        # دریافت 20 کندل اخیر برای نماد موردنظر
+        data = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 20)
+        # تبدیل داده‌ها به دیتافریم
+        data = pd.DataFrame(data)
+        data['time'] = pd.to_datetime(data['time'], unit='s')
+        # محاسبه مقادیر MACD
+        macd = ta.macd(data['close'], fast=6, slow=13, signal=5)
+        data = pd.concat([data, macd], axis=1)  # افزودن ستون‌های MACD به داده‌ها
+        # دریافت اطلاعات آخرین کندل
+        last_row = data.iloc[-1]
+        macd_line = last_row['MACD_6_13_5']
+        signal_line = last_row['MACDs_6_13_5']
+        macd_histogram = last_row['MACDh_6_13_5']
+        # تعیین وضعیت MACD برای آخرین کندل
+        if macd_line > 0 and signal_line > 0 and macd_histogram > 0:
+            state = 1  # روند صعودی قوی
+        elif macd_line < 0 and signal_line < 0 and macd_histogram < 0:
+            state = 2  # روند نزولی قوی
+        elif macd_line > signal_line and macd_histogram > 0:
+            state = 3  # سیگنال صعودی قوی
+        elif macd_line > signal_line and macd_histogram < 0:
+            state = 4  # سیگنال صعودی ضعیف
+        elif macd_line < signal_line and macd_histogram < 0:
+            state = 5  # سیگنال نزولی قوی
+        elif macd_line < signal_line and macd_histogram > 0:
+            state = 6  # سیگنال نزولی ضعیف
+        elif (macd_line > signal_line and macd_histogram > 0 and
+            last_row['close'] < data['close'].iloc[-2]):
+            state = 7  # واگرایی مثبت (معکوس صعودی)
+        elif (macd_line < signal_line and macd_histogram < 0 and
+            last_row['close'] > data['close'].iloc[-2]):
+            state = 8  # واگرایی منفی (معکوس نزولی)
+        else:
+            state = 0  # حالت خنثی یا نامشخص
+        return state  # بازگرداندن وضعیت MACD برای آخرین کندل
+
+    def get_adx_state(self):
+        # دریافت ۲۰ کندل اخیر برای محاسبات ADX
+        data = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 20)
+        # تبدیل داده‌ها به دیتافریم
+        data = pd.DataFrame(data)
+        data['time'] = pd.to_datetime(data['time'], unit='s')
+        # محاسبه ADX
+        adx = ta.adx(data['high'], data['low'], data['close'], length=9)
+        data = pd.concat([data, adx], axis=1)  # افزودن ستون‌های ADX به داده‌ها
+        # دریافت اطلاعات آخرین کندل
+        last_row = data.iloc[-1]
+        adx_value = last_row['ADX_9']
+        di_plus = last_row['DMP_9']
+        di_minus = last_row['DMN_9']
+        # تعیین وضعیت ADX برای آخرین کندل
+        if adx_value > 25:
+            if di_plus > di_minus:
+                state = 1  # روند قوی صعودی
+            elif di_minus > di_plus:
+                state = 3  # روند قوی نزولی
+        elif adx_value < 25:
+            if di_plus > di_minus:
+                state = 2  # روند ضعیف صعودی
+            elif di_minus > di_plus:
+                state = 4  # روند ضعیف نزولی
+            else:
+                state = 5  # بازار بدون روند
+        else:
+            state = 0  # حالت نامشخص
+        return state  # بازگرداندن وضعیت ADX برای آخرین کندل
+
+    def get_rsi_state(self):
+        # دریافت داده‌های کندل‌ها
+        data = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 20)
+        # تبدیل به DataFrame
+        data = pd.DataFrame(data)
+        data['time'] = pd.to_datetime(data['time'], unit='s')
+        # محاسبه RSI
+        data['rsi'] = ta.rsi(data['close'], length=9)
+        # دریافت اطلاعات آخرین کندل
+        last_row = data.iloc[-1]
+        last_rsi = last_row['rsi']
+        prev_rsi = data['rsi'].iloc[-2]  # مقدار RSI کندل قبلی
+        # تعیین وضعیت RSI
+        if last_rsi > 70:
+            state = 1  # اشباع خرید
+        elif last_rsi < 30:
+            state = 2  # اشباع فروش
+        elif last_rsi > 50 and last_rsi > prev_rsi:
+            state = 3  # روند صعودی
+        elif last_rsi < 50 and last_rsi < prev_rsi:
+            state = 4  # روند نزولی
+        elif last_rsi == 50:
+            state = 5  # محدوده میانه
+        elif 30 <= last_rsi <= 70:
+            state = 6  # حالت خنثی
+        else:
+            state = 0  # حالت نامشخص
+        return state  # بازگرداندن وضعیت RSI برای آخرین کندل
+
+    def get_moving_average(self, period=int):
+        rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, period)
+        if rates is None or len(rates) < period:
+            return None
+        list_price = []
+        for rate in rates:
+            list_price.append(rate['close'])
+        moving_average = sum(list_price)/len(list_price)
+        return moving_average
+
+    def get_moving_map(self, moving_average=int):
+        candels = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 60)
+        if candels is None or len(candels) > 60:
+            print(None)
+        list_price = []
+        for candle in candels:
+            list_price.append(candle[2])
+            list_price.append(candle[3])
+        price_map = max(list_price) - min(list_price)
+        moving_map = moving_average - min(list_price)
+        anser = round(moving_map / price_map * 100)
+        return anser
 
     def position_size(self, sl_price, entry_price):
         symbol_info = mt5.symbol_info(self.symbol)
@@ -55,125 +277,6 @@ class AutoTrading():
             volume = round(volume, 2)
             volume = min(max(volume, 0.01), 10.0)
         return volume
-
-    def get_candle(self):
-        rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 2, 9)
-        if rates is None or len(rates) > 9:
-            return None
-        lis = []
-        for rate in rates:
-            candle = rate[4] - rate[1]
-
-            rates_dict = {
-                'open': rate[1],
-                'close': rate[4],
-                'candle': candle
-            }
-            lis.append(rates_dict)
-        buy_values = [entry['candle'] for entry in lis if entry['candle'] > 0]
-        sell_values = [entry['candle'] for entry in lis if entry['candle'] < 0]
-        min_buy = min(buy_values) if buy_values else 0
-        sum_buy = sum(buy_values) if buy_values else 0
-        len_buy = len(buy_values) if buy_values else 1
-        max_buy = max(buy_values) if buy_values else 0
-        min_sell = min(sell_values) if sell_values else 0
-        sum_sell = sum(sell_values) if sell_values else 0
-        len_sell = len(sell_values) if sell_values else 1
-        max_sell = max(sell_values) if sell_values else 0
-
-        buy_values_dict = {
-            'buy_values_one': min_buy,
-            'buy_values_two': ((sum_buy / len_buy) + max_buy) / 2,
-            'buy_values_three': sum_buy / len_buy,
-            'buy_values_four': ((sum_buy / len_buy) + max_buy) / 2,
-            'buy_values_five': max_buy,
-        }
-        sell_values_dict = {
-            'sell_values_one':  min_sell,
-            'sell_values_two': ((sum_sell / len_sell) + max_sell) / 2,
-            'sell_values_three': sum_sell / len_sell,
-            'sell_values_four': ((sum_sell / len_sell) + max_sell) / 2,
-            'sell_values_five': max_sell,
-        }
-        candle_now = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
-        if candle_now is None or len(candle_now) == 0:
-            return None
-        candle_now = candle_now[0][4] - candle_now[0][1]
-        if candle_now == 0:
-            return 0    
-        if buy_values_dict['buy_values_five'] < candle_now:
-            return 6
-        elif buy_values_dict['buy_values_four'] < candle_now <= buy_values_dict['buy_values_five']:
-            return 5
-        elif buy_values_dict['buy_values_three'] < candle_now <= buy_values_dict['buy_values_four']:
-            return 4
-        elif buy_values_dict['buy_values_two'] < candle_now <= buy_values_dict['buy_values_three']:
-            return 3
-        elif buy_values_dict['buy_values_one'] < candle_now <= buy_values_dict['buy_values_two']:
-            return 2
-        elif 0 < candle_now <= buy_values_dict['buy_values_one']:
-            return 1
-        elif sell_values_dict['sell_values_five'] < candle_now < 0:
-            return -1
-        elif sell_values_dict['sell_values_four'] < candle_now <= sell_values_dict['sell_values_five']:
-            return -2
-        elif sell_values_dict['sell_values_three'] < candle_now <= sell_values_dict['sell_values_four']:
-            return -3
-        elif sell_values_dict['sell_values_two'] < candle_now <= sell_values_dict['sell_values_three']:
-            return -4
-        elif sell_values_dict['sell_values_one'] < candle_now <= sell_values_dict['sell_values_two']:
-            return -5
-        elif candle_now <= sell_values_dict['sell_values_one']:
-            return -6
-
-    def get_candle_power(self):
-        candle_1 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
-        candle_2 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 2, 1)
-        trend = candle_1[0][4] - candle_1[0][1]
-        power = candle_1[0][4] - candle_2[0][2] if trend > 0 else candle_2[0][3] - candle_1[0][4] 
-        power_candle = 0 if power < 0 else 1
-        return power_candle
-    
-    def get_candle_shadow(self):
-        candel = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
-        open_candel = candel[0][1]
-        high_candel = candel[0][2]
-        low_candel = candel[0][3]
-        close_candel = candel[0][4]
-        trend = open_candel - close_candel
-        if trend < 0 :
-            up_shadow = high_candel - close_candel
-            down_shadow = open_candel - low_candel
-            up_shadow = up_shadow / (high_candel - low_candel) 
-            down_shadow = down_shadow / (high_candel - low_candel)  
-            return int(str(up_shadow)[2]), int(str(down_shadow)[2])
-        elif trend > 0 :
-            up_shadow = high_candel - open_candel
-            down_shadow = close_candel - low_candel
-            up_shadow = up_shadow / (high_candel - low_candel)  
-            down_shadow = down_shadow / (high_candel - low_candel)  
-            return int(str(up_shadow)[2]), int(str(down_shadow)[2])
-        else:
-            up_shadow = 0
-            down_shadow = 0
-            return up_shadow, down_shadow
-        
-    def get_moving_average(self, period=int):
-        rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, period)
-        if rates is None or len(rates) < period:
-            print("Failed to get rates.")
-            return None
-        list_price = []
-        for rate in rates:
-            list_price.append(rate['close'])
-        moving_average = sum(list_price)/len(list_price)
-
-        candle_now = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 0, 1)
-        if candle_now is None or len(candle_now) == 0:
-            print("Failed to get current candle")
-            return None
-        pip_moving = candle_now[0][1] - moving_average
-        return pip_moving
 
     def open_position(self, order_type, risk_reward=1.0, comment="NULL", strategy=int):
         order = mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL
@@ -238,12 +341,6 @@ class AutoTrading():
                                 ticket_in = None
                                 ticket_out = None
                                 profit = None
-
-    def int_moving(self, moving5, moving15, moving60):
-        numbers = [0, moving5, moving15, moving60]
-        sorted_numbers = sorted(numbers)  
-        scores = {value: rank for rank, value in enumerate(sorted_numbers)}
-        return [scores[0], scores[moving5], scores[moving15], scores[moving60]]
     
 async def send_telegram(text):
     load_dotenv()
@@ -253,74 +350,76 @@ async def send_telegram(text):
 async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     trade = AutoTrading(ACCOUNT, PASSWORD, SERVER, symbol, risk)
     init_db()
-    model_buy = tf.keras.models.load_model('buy.h5')
-    model_sell = tf.keras.models.load_model('sell.h5')
-    await send_telegram('Connecting to MetaTrader5')
+    await send_telegram("conecting to MetaTrader5...")
     last_candle_open_time = trade.get_last_candle_open_time()
     start_time = datetime.strptime("01:00", "%H:%M").time()
-    end_time = datetime.strptime("04:00", "%H:%M").time()
-    day = 5
+    end_time = datetime.strptime("23:59", "%H:%M").time()
+    day = 1
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
             await asyncio.sleep(1)
             current_open_time = trade.get_last_candle_open_time()
-            candle = trade.get_candle()
-            power = trade.get_candle_power()
-            up_shadow, down_shadow = trade.get_candle_shadow()
-            moving5 = trade.get_moving_average(5)
-            moving15 = trade.get_moving_average(15)
-            moving60 = trade.get_moving_average(60)
-            int_moving = trade.int_moving(moving5, moving15, moving60)
             if current_open_time != last_candle_open_time:
+                day = trade.get_day()
+                hour = trade.get_hour()
+                candle = trade.get_candle()
+                power = trade.get_candle_power()
+                close = trade.get_candle_close()
+                up_shadow, down_shadow = trade.get_candle_shadow()
+                macd = trade.get_macd_state()
+                adx = trade.get_adx_state()
+                rsi = trade.get_rsi_state()
+                price_map = trade.get_moving_map(trade.get_moving_average(1))
+                moving15 = trade.get_moving_map(trade.get_moving_average(15))
+                moving30 = trade.get_moving_map(trade.get_moving_average(30))
+                moving45 = trade.get_moving_map(trade.get_moving_average(45))
+                moving60 = trade.get_moving_map(trade.get_moving_average(60))
+                last_candle_open_time = trade.get_last_candle_open_time()
                 if candle is not None:
-                    if candle > 0 and moving15 > 0:
-                        trade_id = save_buy1(candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
-                        X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
-                        result_Ai = model_buy.predict(X)
-                        result_Ai = int(np.argmax(result_Ai))
-                        comment = f"Buy-{str(trade_id)}"
-                        ticket_in = trade.open_position("BUY", risk_reward, comment, 1)
-                        if ticket_in:
-                            update_ticket_buy(trade_id, "opened", ticket_in, result_Ai, day)
-                            await send_telegram(f"{comment} order is opened")
+                    if candle == 1:
+                        id_buy = save_buy_buy(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                        id_sell = save_buy_sell(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                        comment_buy = f"Buy-Buy->{str(id_buy)}"
+                        comment_sell = f"Buy-Sell->{str(id_sell)}"
+                        ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 1)
+                        ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 2)
+                        result_Ai = None
+                        if ticket_in_buy:
+                            update_ticket_buy(id_buy, "opened", ticket_in_buy, result_Ai)
+                            await send_telegram(f"{comment_buy} order is opened")
                         else:
-                            update_ticket_buy(trade_id, "not opened", ticket_in, result_Ai, day)
-                            await send_telegram(f"{comment} order not opened")
-                        if result_Ai == 0:
-                            trade_id = save_sell2(candle, power, up_shadow, down_shadow, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
-                            comment = f"Sell-{str(trade_id)} and Strategy-2"
-                            ticket_in = trade.open_position("SELL", risk_reward, comment, 2)
-                            if ticket_in:
-                                update_ticket_sell2(trade_id, "opened", ticket_in, None, day)
-                            else:
-                                update_ticket_sell2(trade_id, "not opened", ticket_in, None, day)
-
-                    elif candle < 0 and moving15 < 0:
-                        trade_id = save_sell1(abs(candle), power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
-                        X = np.array([[candle, power, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3])]])
-                        result_Ai = model_sell.predict(X)
-                        result_Ai = int(np.argmax(result_Ai))
-                        comment = f"Sell-{str(trade_id)}"
-                        ticket_in = trade.open_position("SELL", risk_reward, comment, 1)
-                        if ticket_in:
-                            update_ticket_sell(trade_id, "opened", ticket_in, result_Ai, day)
-                            await send_telegram(f"{comment} order is opened")
+                            update_ticket_buy(id_buy, "not opened", ticket_in_buy, result_Ai)
+                            await send_telegram(f"{comment_buy} order not opened")
+                        result_Ai = None
+                        if ticket_in_sell:
+                            update_ticket_sell2(id_sell, "opened", ticket_in_sell, result_Ai)
+                            await send_telegram(f"{comment_sell} order is opened")
                         else:
-                            update_ticket_sell(trade_id, "not opened", ticket_in, result_Ai, day)
-                            await send_telegram(f"{comment} order not opened")
-                        if result_Ai == 0:
-                            trade_id = save_buy2(candle, power, up_shadow, down_shadow, int(int_moving[0]), int(int_moving[1]), int(int_moving[2]), int(int_moving[3]))
-                            comment = f"Buy-{str(trade_id)} and Strategy-2"
-                            ticket_in = trade.open_position("BUY", risk_reward, comment, 2)
-
-                            if ticket_in:
-                                update_ticket_buy2(trade_id, "opened", ticket_in, None, day)
-                            else:
-                                update_ticket_buy2(trade_id, "not opened", ticket_in, None, day)
-
-                    else:
+                            update_ticket_sell2(id_sell, "not opened", ticket_in_sell, result_Ai)
+                            await send_telegram(f"{comment_sell} order not opened")
                         trade.update_tiket_result()
-                last_candle_open_time = current_open_time
+                    elif candle == 2: 
+                        id_sell = save_sell_sell(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                        id_buy = save_sell_buy(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                        comment_sell = f"Sell-Sell->{str(id_buy)}"
+                        comment_buy = f"Sell-Buy->{str(id_sell)}"
+                        ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 1)
+                        ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 2)
+                        result_Ai = None
+                        if ticket_in_sell:
+                            update_ticket_sell(id_sell, "opened", ticket_in_sell, result_Ai)
+                            await send_telegram(f"{comment_sell} order is opened")
+                        else:
+                            update_ticket_sell(id_sell, "not opened", ticket_in_sell, result_Ai)
+                            await send_telegram(f"{comment_sell} order not opened")
+                        result_Ai = None
+                        if ticket_in_buy:
+                            update_ticket_buy2(id_buy, "opened", ticket_in_buy, result_Ai)
+                            await send_telegram(f"{comment_buy} order is opened")
+                        else:
+                            update_ticket_buy2(id_buy, "not opened", ticket_in_buy, result_Ai)
+                            await send_telegram(f"{comment_sell} order not opened")
+                        trade.update_tiket_result()
         else:
             last_candle_open_time = trade.get_last_candle_open_time()
             trade.update_tiket_result()

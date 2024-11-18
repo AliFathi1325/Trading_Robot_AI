@@ -5,3 +5,5 @@ python-dotenv
 tensorflow
 numpy
 flask
+pandas
+pandas_ta

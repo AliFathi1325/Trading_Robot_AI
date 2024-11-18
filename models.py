@@ -4,75 +4,103 @@ def init_db():
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS buy (
+        CREATE TABLE IF NOT EXISTS BUYBUY (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Candle INTEGER NOT NULL,
-            Power INTEGER NOT NULL,
-            price INTEGER NOT NULL,
-            MovingAverage5 INTEGER NOT NULL,
-            MovingAverage15 INTEGER NOT NULL,
-            MovingAverage60 INTEGER NOT NULL,
-            ticket_in INTEGER NULL,
-            ticket_out INTEGER NULL,
-            comment TEXT NULL,
-            result INTEGER NULL,
-            Day INTEGER NULL,
-            AI INTEGER NULL
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sell (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Candle INTEGER NOT NULL,
-            Power INTEGER NOT NULL,
-            price INTEGER NOT NULL,
-            MovingAverage5 INTEGER NOT NULL,
-            MovingAverage15 INTEGER NOT NULL,
-            MovingAverage60 INTEGER NOT NULL,
-            ticket_in INTEGER NULL,
-            ticket_out INTEGER NULL,
-            comment TEXT NULL,
-            result INTEGER NULL,
-            Day INTEGER NULL,
-            AI INTEGER NULL
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS buy2 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Candle INTEGER NOT NULL,
-            Power INTEGER NOT NULL,
-            price INTEGER NOT NULL,
+            day INTEGER NOT NULL,
+            hour INTEGER NOT NULL,
+            candle INTEGER NOT NULL,
+            power INTEGER NOT NULL,
+            close INTEGER NOT NULL,
             up_shadow INTEGER NOT NULL,
             down_shadow INTEGER NOT NULL,
-            MovingAverage5 INTEGER NOT NULL,
-            MovingAverage15 INTEGER NOT NULL,
-            MovingAverage60 INTEGER NOT NULL,
+            price_map INTEGER NOT NULL,
+            moving15 INTEGER NOT NULL,
+            moving30 INTEGER NOT NULL,
+            moving45 INTEGER NOT NULL,
+            moving60 INTEGER NOT NULL,
+            macd INTEGER NOT NULL,
+            adx INTEGER NOT NULL,
+            rsi INTEGER NOT NULL,
             ticket_in INTEGER NULL,
             ticket_out INTEGER NULL,
             comment TEXT NULL,
             result INTEGER NULL,
-            Day INTEGER NULL,
-            AI INTEGER NULL
+            resultAI INTEGER NULL
         )
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sell2 (
+        CREATE TABLE IF NOT EXISTS SELLSELL (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Candle INTEGER NOT NULL,
-            Power INTEGER NOT NULL,
-            price INTEGER NOT NULL,
+            day INTEGER NOT NULL,
+            hour INTEGER NOT NULL,
+            candle INTEGER NOT NULL,
+            power INTEGER NOT NULL,
+            close INTEGER NOT NULL,
             up_shadow INTEGER NOT NULL,
             down_shadow INTEGER NOT NULL,
-            MovingAverage5 INTEGER NOT NULL,
-            MovingAverage15 INTEGER NOT NULL,
-            MovingAverage60 INTEGER NOT NULL,
+            price_map INTEGER NOT NULL,
+            moving15 INTEGER NOT NULL,
+            moving30 INTEGER NOT NULL,
+            moving45 INTEGER NOT NULL,
+            moving60 INTEGER NOT NULL,
+            macd INTEGER NOT NULL,
+            adx INTEGER NOT NULL,
+            rsi INTEGER NOT NULL,
             ticket_in INTEGER NULL,
             ticket_out INTEGER NULL,
             comment TEXT NULL,
             result INTEGER NULL,
-            Day INTEGER NULL,
-            AI INTEGER NULL
+            resultAI INTEGER NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS BUYSELL (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day INTEGER NOT NULL,
+            hour INTEGER NOT NULL,
+            candle INTEGER NOT NULL,
+            power INTEGER NOT NULL,
+            close INTEGER NOT NULL,
+            up_shadow INTEGER NOT NULL,
+            down_shadow INTEGER NOT NULL,
+            price_map INTEGER NOT NULL,
+            moving15 INTEGER NOT NULL,
+            moving30 INTEGER NOT NULL,
+            moving45 INTEGER NOT NULL,
+            moving60 INTEGER NOT NULL,
+            macd INTEGER NOT NULL,
+            adx INTEGER NOT NULL,
+            rsi INTEGER NOT NULL,
+            ticket_in INTEGER NULL,
+            ticket_out INTEGER NULL,
+            comment TEXT NULL,
+            result INTEGER NULL,
+            resultAI INTEGER NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS SELLBUY (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day INTEGER NOT NULL,
+            hour INTEGER NOT NULL,
+            candle INTEGER NOT NULL,
+            power INTEGER NOT NULL,
+            close INTEGER NOT NULL,
+            up_shadow INTEGER NOT NULL,
+            down_shadow INTEGER NOT NULL,
+            price_map INTEGER NOT NULL,
+            moving15 INTEGER NOT NULL,
+            moving30 INTEGER NOT NULL,
+            moving45 INTEGER NOT NULL,
+            moving60 INTEGER NOT NULL,
+            macd INTEGER NOT NULL,
+            adx INTEGER NOT NULL,
+            rsi INTEGER NOT NULL,
+            ticket_in INTEGER NULL,
+            ticket_out INTEGER NULL,
+            comment TEXT NULL,
+            result INTEGER NULL,
+            resultAI INTEGER NULL
         )
     ''')
     cursor.execute('''
@@ -104,95 +132,95 @@ def login_user(username, password):
     conn.close()
     return user
 
-def save_buy1(Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60):
+def save_buy_buy(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO buy (Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60))
+        INSERT INTO BUYBUY (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi))
     transaction_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return transaction_id
 
-def save_sell1(Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60):
+def save_sell_sell(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO sell (Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (Candle, Power, price, MovingAverage5, MovingAverage15, MovingAverage60))
+        INSERT INTO SELLSELL (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi))
     transaction_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return transaction_id
 
-def save_buy2(Candle, Power, price,up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60):
+def save_buy_sell(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO buy2 (Candle, Power, price, up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (Candle, Power, price, up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60))
+        INSERT INTO BUYSELL (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi))
     transaction_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return transaction_id
 
-def save_sell2(Candle, Power, price,up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60):
+def save_sell_buy(day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO sell2 (Candle, Power, price, up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (Candle, Power, price, up_shadow, down_shadow, MovingAverage5, MovingAverage15, MovingAverage60))
+        INSERT INTO SELLBUY (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (day, hour, candle, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi))
     transaction_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return transaction_id
 
-def update_ticket_buy(transaction_id, comment, ticket_in, result_AI, Day):
+def update_ticket_buy(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy 
-        SET ticket_in = ?, comment = ?, AI = ?, Day =?
+        UPDATE BUYBUY 
+        SET ticket_in = ?, comment = ?, resultAI = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, result_AI, Day, transaction_id))
+    ''', (ticket_in, comment, result_AI, transaction_id))
     conn.commit()
     conn.close()
 
-def update_ticket_sell(transaction_id, comment, ticket_in, result_AI, Day):
+def update_ticket_sell(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell 
-        SET ticket_in = ?, comment = ?, AI = ?, Day =?
+        UPDATE SELLSELL 
+        SET ticket_in = ?, comment = ?, resultAI = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, result_AI, Day, transaction_id))
+    ''', (ticket_in, comment, result_AI, transaction_id))
     conn.commit()
     conn.close()
 
-def update_ticket_buy2(transaction_id, comment, ticket_in, result_AI, Day):
+def update_ticket_buy2(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy2 
-        SET ticket_in = ?, comment = ?, AI = ?, Day =?
+        UPDATE SELLBUY  
+        SET ticket_in = ?, comment = ?, resultAI = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, result_AI, Day, transaction_id))
+    ''', (ticket_in, comment, result_AI, transaction_id))
     conn.commit()
     conn.close()
 
-def update_ticket_sell2(transaction_id, comment, ticket_in, result_AI, Day):
+def update_ticket_sell2(transaction_id, comment, ticket_in, result_AI):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell2 
-        SET ticket_in = ?, comment = ?, AI = ?, Day =?
+        UPDATE BUYSELL 
+        SET ticket_in = ?, comment = ?, resultAI = ?
         WHERE id = ? 
-    ''', (ticket_in, comment, result_AI, Day, transaction_id))
+    ''', (ticket_in, comment, result_AI, transaction_id))
     conn.commit()
     conn.close()
 
@@ -200,7 +228,7 @@ def update_result_buy(result, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy 
+        UPDATE BUYBUY 
         SET result = ?
         WHERE ticket_in = ? 
     ''', (result, ticket_in))
@@ -211,7 +239,7 @@ def update_result_sell(result, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell 
+        UPDATE SELLSELL 
         SET result = ?
         WHERE ticket_in = ? 
     ''', (result, ticket_in))
@@ -222,7 +250,7 @@ def update_result_buy2(result, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy2 
+        UPDATE BUYSELL 
         SET result = ?
         WHERE ticket_in = ? 
     ''', (result, ticket_in))
@@ -233,7 +261,7 @@ def update_result_sell2(result, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell2 
+        UPDATE SELLBUY 
         SET result = ?
         WHERE ticket_in = ? 
     ''', (result, ticket_in))
@@ -244,7 +272,7 @@ def update_ticket_out_buy(ticket_out, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy 
+        UPDATE BUYBUY 
         SET ticket_out = ?
         WHERE ticket_in = ? 
     ''', (ticket_out, ticket_in))
@@ -255,7 +283,7 @@ def update_ticket_out_sell(ticket_out, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell 
+        UPDATE SELLSELL  
         SET ticket_out = ?
         WHERE ticket_in = ? 
     ''', (ticket_out, ticket_in))
@@ -266,7 +294,7 @@ def update_ticket_out_buy2(ticket_out, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE buy2 
+        UPDATE BUYSELL 
         SET ticket_out = ?
         WHERE ticket_in = ? 
     ''', (ticket_out, ticket_in))
@@ -277,7 +305,7 @@ def update_ticket_out_sell2(ticket_out, ticket_in):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
     cursor.execute(''' 
-        UPDATE sell2 
+        UPDATE SELLBUY 
         SET ticket_out = ?
         WHERE ticket_in = ? 
     ''', (ticket_out, ticket_in))
@@ -287,7 +315,7 @@ def update_ticket_out_sell2(ticket_out, ticket_in):
 def get_data_from_db(table_name):
     conn = sqlite3.connect('swing.db')
     cursor = conn.cursor()
-    cursor.execute(f"SELECT id, Candle, Power, Price, MovingAverage5, MovingAverage15, MovingAverage60, Result, AI FROM {table_name}")
+    cursor.execute(f"SELECT id, Candle, Power, Price, MovingAverage5, MovingAverage15, MovingAverage60, Result, resultAI FROM {table_name}")
     data = cursor.fetchall()
     conn.close()
     return data
