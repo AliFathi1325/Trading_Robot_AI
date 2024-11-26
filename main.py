@@ -6,7 +6,7 @@ import asyncio
 from telegram import Bot
 from dotenv import load_dotenv
 import os
-# import tensorflow as tf
+import tensorflow as tf
 import numpy as np
 import pandas_ta as ta
 import pandas as pd
@@ -64,15 +64,15 @@ class AutoTrading():
             close_candle = old_candle[4]
             volume_candle = old_candle[5]
             trend = open_candle - close_candle
-            if trend > 0 :
+            if trend > 0:
                 up_shadow = high_candle - open_candle
                 down_shadow = close_candle - low_candle
                 up_shadow = up_shadow / (high_candle - low_candle) * 100
                 down_shadow = down_shadow / (high_candle - low_candle) * 100
-                candle_body = 100 -  up_shadow
+                candle_body = 100 - up_shadow
                 score = candle_body * volume_candle * trend
                 list_all.append(score)
-            elif trend < 0 :
+            elif trend < 0:
                 up_shadow = high_candle - close_candle
                 down_shadow = open_candle - low_candle
                 up_shadow = up_shadow / (high_candle - low_candle) * 100
@@ -87,25 +87,28 @@ class AutoTrading():
         close_candle = new_candle[0][4]
         volume_candle = new_candle[0][5]
         trend = close_candle - open_candle
-        if trend > 0 :
+        new_score = 0 
+        men_score = sum(list_all) / len(list_all) if list_all else 1  
+        if trend > 0:
             up_shadow = high_candle - open_candle
             down_shadow = close_candle - low_candle
             up_shadow = up_shadow / (high_candle - low_candle) * 100
             down_shadow = down_shadow / (high_candle - low_candle) * 100
             candle_body = 100 - up_shadow
             new_score = candle_body * volume_candle * trend
-            men_score = sum(list_all) / len(list_all)
-        elif trend < 0 :
+        elif trend < 0:
             up_shadow = high_candle - close_candle
             down_shadow = open_candle - low_candle
             up_shadow = up_shadow / (high_candle - low_candle) * 100
             down_shadow = down_shadow / (high_candle - low_candle) * 100
             candle_body = 100 - down_shadow
             new_score = candle_body * volume_candle * abs(trend)
-            men_score = sum(list_all) / len(list_all)
-        score = round(new_score / men_score * 100)
+        if men_score == 0:
+            score = 0
+        else:
+            score = round(new_score / men_score * 100)
         return score
-
+    
     def get_candle_close(self):
         candle_1 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
         candle_2 = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 2, 1)
@@ -284,10 +287,10 @@ class AutoTrading():
         enter_candle = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_M1, 1, 1)
         spread = (mt5.symbol_info_tick(self.symbol).ask - mt5.symbol_info_tick(self.symbol).bid)*1.5
         if strategy == 1:
-            sl = round(enter_candle[0][3]-(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][2]+(spread/3), 2)
+            sl = round(enter_candle[0][3]-(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][2]+(spread), 2)
             tp = round(((enter_price-sl)*risk_reward)+enter_price if order == mt5.ORDER_TYPE_BUY else enter_price-((sl-enter_price)*risk_reward), 2)
         elif strategy == 2:
-            tp = round(enter_candle[0][2]+(spread/3) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][3]-spread, 2)
+            tp = round(enter_candle[0][2]+(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][3]-spread, 2)
             sl = round(enter_price-((tp-enter_price)*risk_reward) if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_price-tp)*risk_reward), 2)
         volume = self.position_size(sl, enter_price)
         request = {
@@ -320,13 +323,17 @@ class AutoTrading():
         for deal_in in deals:
             if deal_in.profit == 0 and deal_in.entry == mt5.DEAL_ENTRY_IN:
                 ticket_in = deal_in.order
+                ticket_out = None
                 try:
-                    ticket_out = mt5.history_orders_get(position = ticket_in)[1][0]
-                except:
-                    pass
-                for deal_out in deals:
-                    if deal_out.profit != 0 and deal_out.entry == mt5.DEAL_ENTRY_OUT:
-                        if ticket_out:
+                    ticket_out = mt5.history_orders_get(position=ticket_in)[1][0]
+                except IndexError:
+                    ticket_out = None
+                except Exception as e:
+                    print(f"Error fetching ticket_out: {e}")
+                    ticket_out = None
+                if ticket_out:
+                    for deal_out in deals:
+                        if deal_out.profit != 0 and deal_out.entry == mt5.DEAL_ENTRY_OUT:
                             if deal_out.order == ticket_out:
                                 profit = deal_out.profit
                                 profit = 1 if profit > 0 else 0
@@ -334,7 +341,7 @@ class AutoTrading():
                                 update_ticket_out_buy(ticket_out, ticket_in)
                                 update_result_sell(profit, ticket_in)
                                 update_ticket_out_sell(ticket_out, ticket_in)
-                                update_result_buy2(profit, ticket_in)  
+                                update_result_buy2(profit, ticket_in)
                                 update_ticket_out_buy2(ticket_out, ticket_in)
                                 update_result_sell2(profit, ticket_in)
                                 update_ticket_out_sell2(ticket_out, ticket_in)
@@ -350,11 +357,14 @@ async def send_telegram(text):
 async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     trade = AutoTrading(ACCOUNT, PASSWORD, SERVER, symbol, risk)
     init_db()
+    modelBuyBuy = tf.keras.models.load_model('BuyBuy.h5')
+    modelBuySell = tf.keras.models.load_model('BuySell.h5')
+    modelSellSell = tf.keras.models.load_model('SellSell.h5')
+    modelSellBuy = tf.keras.models.load_model('SellBuy.h5')
     await send_telegram("conecting to MetaTrader5...")
     last_candle_open_time = trade.get_last_candle_open_time()
-    start_time = datetime.strptime("01:00", "%H:%M").time()
-    end_time = datetime.strptime("23:59", "%H:%M").time()
-    day = 1
+    start_time = datetime.strptime("01:30", "%H:%M").time()
+    end_time = datetime.strptime("10:30", "%H:%M").time()
     while True:
         if run == 1 and start_time <= last_candle_open_time.time() <= end_time:
             await asyncio.sleep(1)
@@ -374,6 +384,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                 moving30 = trade.get_moving_map(trade.get_moving_average(30))
                 moving45 = trade.get_moving_map(trade.get_moving_average(45))
                 moving60 = trade.get_moving_map(trade.get_moving_average(60))
+                X = np.array([[day, hour, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi]])
                 last_candle_open_time = trade.get_last_candle_open_time()
                 if candle is not None:
                     if candle == 1:
@@ -383,14 +394,14 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         comment_sell = f"Buy-Sell->{str(id_sell)}"
                         ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 1)
                         ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 2)
-                        result_Ai = None
+                        result_Ai = int(np.argmax(modelBuyBuy.predict(X)))
                         if ticket_in_buy:
                             update_ticket_buy(id_buy, "opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order is opened")
                         else:
                             update_ticket_buy(id_buy, "not opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order not opened")
-                        result_Ai = None
+                        result_Ai = int(np.argmax(modelBuySell.predict(X)))
                         if ticket_in_sell:
                             update_ticket_sell2(id_sell, "opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order is opened")
@@ -405,14 +416,14 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         comment_buy = f"Sell-Buy->{str(id_sell)}"
                         ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 1)
                         ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 2)
-                        result_Ai = None
+                        result_Ai = result_Ai = int(np.argmax(modelSellSell.predict(X)))
                         if ticket_in_sell:
                             update_ticket_sell(id_sell, "opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order is opened")
                         else:
                             update_ticket_sell(id_sell, "not opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order not opened")
-                        result_Ai = None
+                        result_Ai = result_Ai = int(np.argmax(modelSellBuy.predict(X)))
                         if ticket_in_buy:
                             update_ticket_buy2(id_buy, "opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order is opened")
