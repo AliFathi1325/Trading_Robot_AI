@@ -150,25 +150,25 @@ class AutoTrading():
         macd_histogram = last_row['MACDh_6_13_5']
         # تعیین وضعیت MACD برای آخرین کندل
         if macd_line > 0 and signal_line > 0 and macd_histogram > 0:
-            state = 1  # روند صعودی قوی
+            state = 100  # روند صعودی قوی
         elif macd_line < 0 and signal_line < 0 and macd_histogram < 0:
-            state = 2  # روند نزولی قوی
+            state = 0  # روند نزولی قوی
         elif macd_line > signal_line and macd_histogram > 0:
-            state = 3  # سیگنال صعودی قوی
+            state = 80  # سیگنال صعودی قوی
         elif macd_line > signal_line and macd_histogram < 0:
-            state = 4  # سیگنال صعودی ضعیف
+            state = 60  # سیگنال صعودی ضعیف
         elif macd_line < signal_line and macd_histogram < 0:
-            state = 5  # سیگنال نزولی قوی
+            state = 20  # سیگنال نزولی قوی
         elif macd_line < signal_line and macd_histogram > 0:
-            state = 6  # سیگنال نزولی ضعیف
+            state = 40  # سیگنال نزولی ضعیف
         elif (macd_line > signal_line and macd_histogram > 0 and
             last_row['close'] < data['close'].iloc[-2]):
-            state = 7  # واگرایی مثبت (معکوس صعودی)
+            state = 90  # واگرایی مثبت (معکوس صعودی)
         elif (macd_line < signal_line and macd_histogram < 0 and
             last_row['close'] > data['close'].iloc[-2]):
-            state = 8  # واگرایی منفی (معکوس نزولی)
+            state = 10  # واگرایی منفی (معکوس نزولی)
         else:
-            state = 0  # حالت خنثی یا نامشخص
+            state = 50  # حالت خنثی یا نامشخص
         return state  # بازگرداندن وضعیت MACD برای آخرین کندل
 
     def get_adx_state(self):
@@ -188,18 +188,18 @@ class AutoTrading():
         # تعیین وضعیت ADX برای آخرین کندل
         if adx_value > 25:
             if di_plus > di_minus:
-                state = 1  # روند قوی صعودی
+                state = 100  # روند قوی صعودی
             elif di_minus > di_plus:
-                state = 3  # روند قوی نزولی
+                state = 0  # روند قوی نزولی
         elif adx_value < 25:
             if di_plus > di_minus:
-                state = 2  # روند ضعیف صعودی
+                state = 75  # روند ضعیف صعودی
             elif di_minus > di_plus:
-                state = 4  # روند ضعیف نزولی
+                state = 25  # روند ضعیف نزولی
             else:
-                state = 5  # بازار بدون روند
+                state = 50  # بازار بدون روند
         else:
-            state = 0  # حالت نامشخص
+            state = 50  # حالت نامشخص
         return state  # بازگرداندن وضعیت ADX برای آخرین کندل
 
     def get_rsi_state(self):
@@ -216,19 +216,19 @@ class AutoTrading():
         prev_rsi = data['rsi'].iloc[-2]  # مقدار RSI کندل قبلی
         # تعیین وضعیت RSI
         if last_rsi > 70:
-            state = 1  # اشباع خرید
+            state = 100  # اشباع خرید
         elif last_rsi < 30:
-            state = 2  # اشباع فروش
+            state = 0  # اشباع فروش
         elif last_rsi > 50 and last_rsi > prev_rsi:
-            state = 3  # روند صعودی
+            state = 75  # روند صعودی
         elif last_rsi < 50 and last_rsi < prev_rsi:
-            state = 4  # روند نزولی
+            state = 25  # روند نزولی
         elif last_rsi == 50:
-            state = 5  # محدوده میانه
+            state = 50  # محدوده میانه
         elif 30 <= last_rsi <= 70:
-            state = 6  # حالت خنثی
+            state = 50  # حالت خنثی
         else:
-            state = 0  # حالت نامشخص
+            state = 50  # حالت نامشخص
         return state  # بازگرداندن وضعیت RSI برای آخرین کندل
 
     def get_moving_average(self, period=int):
@@ -290,8 +290,8 @@ class AutoTrading():
             sl = round(enter_candle[0][3]-(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][2]+(spread), 2)
             tp = round(((enter_price-sl)*risk_reward)+enter_price if order == mt5.ORDER_TYPE_BUY else enter_price-((sl-enter_price)*risk_reward), 2)
         elif strategy == 2:
-            tp = round(enter_candle[0][2]+(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][3]-spread, 2)
-            sl = round(enter_price-((tp-enter_price)*risk_reward) if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_price-tp)*risk_reward), 2)
+            tp = round(enter_price+((enter_price-enter_candle[0][1])*risk_reward)+spread if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_candle[0][3]-enter_price)*risk_reward)-spread, 2)
+            sl = round(enter_price+((enter_price-enter_candle[0][1]))-spread if order == mt5.ORDER_TYPE_BUY else enter_price-((enter_candle[0][3]-enter_price))+spread, 2)
         volume = self.position_size(sl, enter_price)
         request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -352,7 +352,10 @@ class AutoTrading():
 async def send_telegram(text):
     load_dotenv()
     bot = Bot(token=os.getenv("BOT_TOKEN"))
-    await bot.send_message(chat_id=os.getenv("CHANEL"), text=text)  
+    try:
+        await bot.send_message(chat_id=os.getenv("CHANEL"), text=text)
+    except Exception as e:
+        print(f"Failed to send message: {e}")
  
 async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
     trade = AutoTrading(ACCOUNT, PASSWORD, SERVER, symbol, risk)
@@ -384,7 +387,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                 moving30 = trade.get_moving_map(trade.get_moving_average(30))
                 moving45 = trade.get_moving_map(trade.get_moving_average(45))
                 moving60 = trade.get_moving_map(trade.get_moving_average(60))
-                X = np.array([[day, hour, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi]])
+                X = np.array([[power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi]])
                 last_candle_open_time = trade.get_last_candle_open_time()
                 if candle is not None:
                     if candle == 1:
@@ -395,6 +398,17 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 1)
                         ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 2)
                         result_Ai = int(np.argmax(modelBuyBuy.predict(X)))
+                        if result_Ai == 1:
+                            id_buy_AI = save_buy_buy(day, hour, 2, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                            comment_buy_AI = f"Buy-Buy-AI->{str(id_buy)}"
+                            ticket_in_buy_AI = trade.open_position("BUY", 2, comment_buy_AI, 1)
+                            if ticket_in_buy_AI:
+                                update_ticket_buy(id_buy_AI, "opened", ticket_in_buy_AI, None)
+                                await send_telegram(f"{comment_buy_AI} order is opened")
+                            else:
+                                update_ticket_buy(id_buy_AI, "not opened", ticket_in_buy_AI, None)
+                                await send_telegram(f"{comment_buy_AI} order not opened")
+                        print('--------------------')
                         if ticket_in_buy:
                             update_ticket_buy(id_buy, "opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order is opened")
@@ -402,6 +416,17 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                             update_ticket_buy(id_buy, "not opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order not opened")
                         result_Ai = int(np.argmax(modelBuySell.predict(X)))
+                        if result_Ai == 1:
+                            id_sell_AI = save_buy_sell(day, hour, 2, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                            comment_sell_AI = f"Buy-Sell-AI->{str(id_sell_AI)}"
+                            ticket_in_sell_AI = trade.open_position("SELL", 2, comment_sell_AI, 2)
+                            if ticket_in_sell_AI:
+                                update_ticket_sell2(id_sell_AI, "opened", ticket_in_sell_AI, None)
+                                await send_telegram(f"{comment_sell_AI} order is opened")
+                            else:
+                                update_ticket_sell2(id_sell_AI, "not opened", ticket_in_sell_AI, None)
+                                await send_telegram(f"{comment_sell_AI} order not opened")
+                        print('--------------------')
                         if ticket_in_sell:
                             update_ticket_sell2(id_sell, "opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order is opened")
@@ -417,6 +442,17 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 1)
                         ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 2)
                         result_Ai = result_Ai = int(np.argmax(modelSellSell.predict(X)))
+                        if result_Ai == 1:
+                            id_sell_AI = save_sell_sell(day, hour, 1, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                            comment_sell_AI = f"Sell-Sell-AI->{str(id_sell_AI)}"
+                            ticket_in_sell_AI = trade.open_position("SELL", 2, comment_sell_AI, 1)
+                            if ticket_in_sell_AI:
+                                update_ticket_sell(id_sell_AI, "opened", ticket_in_sell_AI, None)
+                                await send_telegram(f"{comment_sell_AI} order is opened")
+                            else:
+                                update_ticket_sell(id_sell_AI, "not opened", ticket_in_sell_AI, None)
+                                await send_telegram(f"{comment_sell_AI} order not opened")
+                        print('--------------------')
                         if ticket_in_sell:
                             update_ticket_sell(id_sell, "opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order is opened")
@@ -424,6 +460,16 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                             update_ticket_sell(id_sell, "not opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order not opened")
                         result_Ai = result_Ai = int(np.argmax(modelSellBuy.predict(X)))
+                        if result_Ai == 1:
+                            id_buy_AI = save_sell_buy(day, hour, 1, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
+                            comment_buy_AI = f"Sell-Buy-AI->{str(id_buy_AI)}"
+                            ticket_in_buy_AI = trade.open_position("BUY", 2, comment_buy_AI, 2)
+                            if ticket_in_buy_AI:
+                                update_ticket_buy2(id_buy_AI, "opened", ticket_in_buy_AI, None)
+                                await send_telegram(f"{comment_buy_AI} order is opened")
+                            else:
+                                update_ticket_buy2(id_buy_AI, "not opened", ticket_in_buy_AI, None)
+                                await send_telegram(f"{comment_buy_AI} order not opened")
                         if ticket_in_buy:
                             update_ticket_buy2(id_buy, "opened", ticket_in_buy, result_Ai)
                             await send_telegram(f"{comment_buy} order is opened")
