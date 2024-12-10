@@ -290,8 +290,8 @@ class AutoTrading():
             sl = round(enter_candle[0][3]-(spread) if order == mt5.ORDER_TYPE_BUY else enter_candle[0][2]+(spread), 2)
             tp = round(((enter_price-sl)*risk_reward)+enter_price if order == mt5.ORDER_TYPE_BUY else enter_price-((sl-enter_price)*risk_reward), 2)
         elif strategy == 2:
-            tp = round(enter_price+((enter_price-enter_candle[0][1])*risk_reward)+spread if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_candle[0][3]-enter_price)*risk_reward)-spread, 2)
-            sl = round(enter_price+((enter_price-enter_candle[0][1]))-spread if order == mt5.ORDER_TYPE_BUY else enter_price-((enter_candle[0][3]-enter_price))+spread, 2)
+            tp = round(enter_price-(((enter_price-enter_candle[0][1])-spread)*risk_reward) if order == mt5.ORDER_TYPE_BUY else enter_price+((enter_candle[0][3]-enter_price-spread)*risk_reward), 2)
+            sl = round(enter_price+((enter_price-enter_candle[0][1])-spread) if order == mt5.ORDER_TYPE_BUY else enter_price-(enter_candle[0][3]-enter_price-spread), 2)
         volume = self.position_size(sl, enter_price)
         request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -441,7 +441,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         comment_buy = f"Sell-Buy->{str(id_sell)}"
                         ticket_in_sell = trade.open_position("SELL", risk_reward, comment_sell, 1)
                         ticket_in_buy = trade.open_position("BUY", risk_reward, comment_buy, 2)
-                        result_Ai = result_Ai = int(np.argmax(modelSellSell.predict(X)))
+                        result_Ai = int(np.argmax(modelSellSell.predict(X)))
                         if result_Ai == 1:
                             id_sell_AI = save_sell_sell(day, hour, 1, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
                             comment_sell_AI = f"Sell-Sell-AI->{str(id_sell_AI)}"
@@ -459,7 +459,7 @@ async def run_bot(ACCOUNT, PASSWORD, SERVER, symbol, risk, risk_reward, run):
                         else:
                             update_ticket_sell(id_sell, "not opened", ticket_in_sell, result_Ai)
                             await send_telegram(f"{comment_sell} order not opened")
-                        result_Ai = result_Ai = int(np.argmax(modelSellBuy.predict(X)))
+                        result_Ai = int(np.argmax(modelSellBuy.predict(X)))
                         if result_Ai == 1:
                             id_buy_AI = save_sell_buy(day, hour, 1, power, close, up_shadow, down_shadow, price_map, moving15, moving30, moving45, moving60, macd, adx, rsi)
                             comment_buy_AI = f"Sell-Buy-AI->{str(id_buy_AI)}"
